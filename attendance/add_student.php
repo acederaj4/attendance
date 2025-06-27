@@ -1,30 +1,13 @@
 <?php
 session_start();
-include 'db.php';
-if (!isset($_SESSION['admin'])) header("Location: login.php");
-
-if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $name = $conn->real_escape_string($_POST['name']);
-    $student_id = $conn->real_escape_string($_POST['student_id']);
-    $course = $conn->real_escape_string($_POST['course']);
-    $year_level = $conn->real_escape_string($_POST['year_level']);
-
-    $conn->query("INSERT INTO students (name, student_id, course, year_level) VALUES ('$name', '$student_id', '$course', '$year_level')");
-    header("Location: dashboard.php");
-    exit();
-}
 ?>
-
 <!DOCTYPE html>
 <html>
 <head>
     <title>Add Student</title>
+    <script src="https://cdn.jsdelivr.net/npm/axios/dist/axios.min.js"></script>
     <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+        * { margin: 0; padding: 0; box-sizing: border-box; }
 
         body {
             font-family: 'Segoe UI', sans-serif;
@@ -77,92 +60,149 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             font-weight: bold;
         }
 
-        form {
-            background: #fff;
-            padding: 20px;
-            margin-top: 20px;
-            border-radius: 8px;
-            box-shadow: 0 0 10px #ccc;
-            max-width: 500px;
-        }
-
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: 600;
+        h2 {
+            margin-bottom: 10px;
             color: #333;
         }
 
-        input[type="text"],
-        select {
-            width: 100%;
-            padding: 12px;
+        .record-count {
             margin-bottom: 20px;
-            border: 1px solid #ccc;
-            border-radius: 5px;
+            font-weight: 600;
+            color: #555;
         }
 
-        button {
-            padding: 10px 20px;
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: #fff;
+            border: 1px solid #ccc;
+        }
+
+        th, td {
+            padding: 12px;
+            border: 1px solid #ccc;
+            text-align: center;
+        }
+
+        th {
+            background-color: #ecf0f1;
+        }
+
+        /* Status badge styles */
+        .status-present {
             background-color: #2ecc71;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        .status-absent {
+            background-color: #e74c3c;
+            color: white;
+            padding: 5px 10px;
+            border-radius: 12px;
+            font-weight: bold;
+        }
+
+        /* Delete button style */
+        .btn-delete {
+            background-color: #e74c3c;
             border: none;
             color: white;
-            font-weight: bold;
+            padding: 6px 12px;
             border-radius: 5px;
             cursor: pointer;
+            font-weight: bold;
+            transition: background-color 0.3s ease;
         }
 
-        button:hover {
-            background-color: #27ae60;
+        .btn-delete:hover {
+            background-color: #c0392b;
         }
     </style>
 </head>
 <body>
 
-    <div class="sidebar">
-        <h3>Welcome, <?= htmlspecialchars($_SESSION['admin']); ?></h3>
-        <a href="dashboard.php">🏠 Dashboard</a>
-        <a href="add_student.php">➕ Add Student</a>
-        <a href="mark_attendance.php">📝 Mark Attendance</a>
-        <a href="view_attendance.php">📋 View Attendance</a>
-         <a href="report.php">📊 Report</a>
-        <a href="logout.php">🚪 Logout</a>
-    </div>
+<div class="sidebar">
+    <h3>Welcome, <?= htmlspecialchars($_SESSION['admin']); ?></h3>
+    <a href="dashboard.php">🏠 Dashboard</a>
+    <a href="add_student.php">➕ Add Student</a>
+    <a href="mark_attendance.php">📝 Mark Attendance</a>
+    <a href="view_attendance.php">📋 View Attendance</a>
+    <a href="report.php">📊 Report</a>
+    <a href="logout.php">🚪 Logout</a>
+</div>
 
-    <div class="main-content">
-        <div class="header">Add Student</div>
+<div class="main-content">
+    <div class="header">Add Student</div>
 
-        <form method="post">
-    <label for="name">Full Name:</label>
-    <input type="text" id="name" name="name" required>
+    <form id="studentForm" onsubmit="submitStudentForm(event)">
+        <label for="name">Full Name:</label>
+        <input type="text" id="name" required>
 
-    <label for="student_id">Student ID:</label>
-    <input type="text" id="student_id" name="student_id" required>
+        <label for="student_id">Student ID:</label>
+        <input type="text" id="student_id" required>
 
-    <label for="course">Course:</label>
-    <select id="course" name="course" required>
-        <option value="" disabled selected>Select course</option>
-        <option value="BSIT">BSIT</option>
-        <option value="BSCRIM">BSCRIM</option>
-        <option value="BSTM">BSTM</option>
-        <option value="BEED">BEED</option>
-        <option value="BSED">BSED</option>
-        <option value="BSOA">BSOA</option>
-        <option value="BSAIS">BSAIS</option>
-    </select>
+        <label for="course">Course:</label>
+        <select id="course" required>
+            <option value="" disabled selected>Select course</option>
+            <option value="BSIT">BSIT</option>
+            <option value="BSCRIM">BSCRIM</option>
+            <option value="BSTM">BSTM</option>
+            <option value="BEED">BEED</option>
+            <option value="BSED">BSED</option>
+            <option value="BSOA">BSOA</option>
+            <option value="BSAIS">BSAIS</option>
+        </select>
 
-    <label for="year_level">Year Level:</label>
-    <select id="year_level" name="year_level" required>
-        <option value="" disabled selected>Select year level</option>
-        <option value="1st Year">1st Year</option>
-        <option value="2nd Year">2nd Year</option>
-        <option value="3rd Year">3rd Year</option>
-        <option value="4th Year">4th Year</option>
-    </select>
+        <label for="year_level">Year Level:</label>
+        <select id="year_level" required>
+            <option value="" disabled selected>Select year level</option>
+            <option value="1st Year">1st Year</option>
+            <option value="2nd Year">2nd Year</option>
+            <option value="3rd Year">3rd Year</option>
+            <option value="4th Year">4th Year</option>
+        </select>
 
-    <button type="submit">Add Student</button>
-</form>
-    </div>
+        <button type="submit">Add Student</button>
+    </form>
+
+    <p id="responseMessage" style="margin-top:20px; font-weight: bold;"></p>
+</div>
+
+<script>
+function submitStudentForm(e) {
+    e.preventDefault();
+
+    const name = document.getElementById('name').value;
+    const student_id = document.getElementById('student_id').value;
+    const course = document.getElementById('course').value;
+    const year_level = document.getElementById('year_level').value;
+
+    axios.post('api/add_student.php', {
+        name: name,
+        student_id: student_id,
+        course: course,
+        year_level: year_level
+    })
+    .then(response => {
+        const msg = document.getElementById('responseMessage');
+        if (response.data.success) {
+            msg.style.color = 'green';
+            msg.textContent = "✅ Student added successfully!";
+            document.getElementById('studentForm').reset();
+        } else {
+            msg.style.color = 'red';
+            msg.textContent = "❌ Error: " + response.data.error;
+        }
+    })
+    .catch(error => {
+        console.error(error);
+        document.getElementById('responseMessage').textContent = "⚠️ Failed to connect to API.";
+    });
+}
+</script>
 
 </body>
 </html>
